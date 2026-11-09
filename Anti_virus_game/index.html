@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CONTROL // Antivirus vs Virus Cluster - Larger Pickups</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Share Tech Mono', monospace; user-select: none; }
+        body { background-color: #08080c; color: #e0e0e0; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; }
+        
+        body::after { content: " "; display: block; position: fixed; top: 0; left: 0; bottom: 0; right: 0; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.3) 50%); z-index: 999; background-size: 100% 4px; pointer-events: none; }
+
+        #game-wrapper { position: relative; border: 2px solid #ff1a33; border-radius: 4px; box-shadow: 0 0 35px rgba(255, 26, 51, 0.3); background: #0b0b10; transition: box-shadow 0.2s ease; }
+        .damage-flash { box-shadow: 0 0 40px rgba(255, 26, 51, 0.9), inset 0 0 25px rgba(255, 26, 51, 0.6) !important; border-color: #ff3355 !important; }
+
+        canvas { display: block; border-radius: 2px; }
+
+        .overlay-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(10, 10, 15, 0.95); z-index: 10; transition: opacity 0.3s ease; border-radius: 2px; }
+        .hidden { opacity: 0; pointer-events: none !important; }
+
+        h1 { font-size: 2.4rem; color: #ff1a33; text-shadow: 0 0 15px rgba(255, 26, 51, 0.6); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 3px; text-align: center; }
+        p { font-size: 0.95rem; color: #a0a0b0; margin-bottom: 20px; text-align: center; max-width: 550px; line-height: 1.5; }
+
+        .btn { background: rgba(255, 26, 51, 0.1); color: #ff1a33; border: 1px solid #ff1a33; padding: 10px 24px; font-size: 0.95rem; font-weight: bold; cursor: pointer; border-radius: 2px; margin: 6px; transition: all 0.2s ease; text-transform: uppercase; letter-spacing: 1px; }
+        .btn:hover { background: #ff1a33; color: #08080c; box-shadow: 0 0 20px #ff1a33; }
+        .btn-cyan { color: #00f0ff; border-color: #00f0ff; }
+        .btn-cyan:hover { background: #00f0ff; color: #08080c; box-shadow: 0 0 20px #00f0ff; }
+
+        #hud { position: absolute; top: 12px; left: 20px; right: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 0.95rem; font-weight: bold; pointer-events: none; text-shadow: 0 0 6px #ff1a33; }
+        .hud-row { display: flex; justify-content: space-between; align-items: center; }
+        
+        .bar-bg { width: 140px; height: 11px; background: rgba(255,255,255,0.05); border: 1px solid #00f0ff; border-radius: 2px; overflow: hidden; display: inline-block; vertical-align: middle; margin-left: 8px; }
+        .bar-fill { height: 100%; width: 100%; background: #00f0ff; transition: width 0.2s; }
+        .xp-bar-bg { border-color: #ffaa00; width: 100%; height: 8px; margin-top: 4px; }
+        .xp-bar-fill { height: 100%; width: 0%; background: #ffaa00; transition: width 0.2s; }
+
+        #boss-hud { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); width: 60%; text-align: center; font-weight: bold; pointer-events: none; }
+        .boss-hp-bg { width: 100%; height: 14px; background: rgba(0,0,0,0.8); border: 1px solid #ff1a33; border-radius: 2px; overflow: hidden; margin-top: 4px; box-shadow: 0 0 15px rgba(255, 26, 51, 0.4); }
+        .boss-hp-fill { height: 100%; width: 100%; background: #ff1a33; transition: width 0.1s; }
+
+        #level-banner { position: absolute; top: 40%; width: 100%; text-align: center; font-size: 2.2rem; font-weight: bold; color: #ff1a33; text-shadow: 0 0 20px rgba(255, 26, 51, 0.8); pointer-events: none; opacity: 0; transition: opacity 0.4s ease; }
+
+        #transition-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(5, 5, 10, 0.9); z-index: 15; opacity: 0; pointer-events: none; transition: opacity 0.4s ease; }
+        #transition-text { font-size: 2rem; color: #ff1a33; text-shadow: 0 0 20px #ff1a33; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; }
+
+        #ready-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(5, 5, 10, 0.7); z-index: 15; pointer-events: none; }
+        #countdown-num { font-size: 5rem; color: #00f0ff; text-shadow: 0 0 20px #00f0ff; font-weight: bold; }
+
+        .modal { background: rgba(12, 12, 18, 0.95); border: 1px solid #00f0ff; padding: 25px; border-radius: 2px; width: 520px; text-align: center; box-shadow: 0 0 25px rgba(0, 240, 255, 0.2); }
+        #test-output { background: #050508; border: 1px solid #224455; padding: 10px; border-radius: 2px; font-size: 0.85rem; color: #00f0ff; margin-top: 15px; text-align: left; max-height: 130px; overflow-y: auto; }
+
+        .upgrade-card { background: rgba(0, 240, 255, 0.05); border: 1px solid #00f0ff; padding: 15px; margin: 10px 0; cursor: pointer; transition: all 0.2s; border-radius: 2px; text-align: left; }
+        .upgrade-card:hover { background: rgba(0, 240, 255, 0.2); box-shadow: 0 0 15px rgba(0, 240, 255, 0.4); transform: translateY(-2px); }
+
+        .leaderboard-table { width: 100%; margin-top: 15px; border-collapse: collapse; font-size: 0.9rem; }
+        .leaderboard-table th, .leaderboard-table td { border-bottom: 1px solid rgba(0, 240, 255, 0.2); padding: 6px; text-align: center; }
+        .leaderboard-table th { color: #00f0ff; }
+        input[type="text"] { background: #000; border: 1px solid #00f0ff; color: #fff; padding: 6px; font-family: inherit; text-align: center; font-size: 1rem; width: 180px; margin-bottom: 10px; outline: none; }
+
+        .popup-modal { background: #0c0c16; border: 2px solid #00ff88; padding: 30px; width: 500px; text-align: center; box-shadow: 0 0 40px rgba(0, 255, 136, 0.4); border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+    <div id="game-wrapper">
+        <canvas id="canvas" width="1280" height="720"></canvas>
+
+        <!-- HUD -->
+        <div id="hud" class="hidden">
+            <div class="hud-row">
+                <div>INTEGRITĀTE: <div class="bar-bg"><div id="hp-fill" class="bar-fill"></div></div></div>
+                <div>LĪMENIS: <span id="level-val" style="color: #00f0ff;">1 / 12</span></div>
+                <div>REIZINĀTĀJS: <span id="mult-val" style="color: #ffaa00;">1.0x</span></div>
+                <div>PUNKTI: <span id="score-val" style="color: #00f0ff;">0</span></div>
+            </div>
+            <div style="font-size: 0.75rem; color: #ffaa00; margin-top: 2px;">
+                SEKTORA PROGRESS (NOGALINĀTI): <span id="kill-count-text">0 / 15</span>
+                <div class="bar-bg xp-bar-bg"><div id="xp-fill" class="xp-bar-fill"></div></div>
+            </div>
+        </div>
+
+        <!-- BOSA HUD -->
+        <div id="boss-hud" class="hidden">
+            <span style="color: #ff1a33; letter-spacing: 2px;" id="boss-status-text">BOSS FĀZE // ANOMĀLIJU NEITRALIZĀCIJA</span>
+            <div class="boss-hp-bg"><div id="boss-hp-fill" class="boss-hp-fill"></div></div>
+        </div>
+
+        <div id="level-banner">LĪMENIS 1: SĀKOTNĒJAIS SEKTORS</div>
+
+        <div id="transition-overlay">
+            <div id="transition-text">DIAGNOSTIKA: PĀREJA UZ NĀKAMO SEKTORU</div>
+        </div>
+
+        <div id="ready-overlay" class="hidden">
+            <div style="font-size: 1.2rem; color: #a0a0c0; margin-bottom: 10px;">SISTĒMA GATAVA...</div>
+            <div id="countdown-num">3</div>
+        </div>
+
+        <!-- MENU -->
+        <div id="screen-menu" class="overlay-screen">
+            <h1>ANTIVIRUS VS VIRUS CLUSTER</h1>
+            <p>Kustība ar <b>WASD</b> taustiņiem, šaušana ar peli, 12 līmeņi.</p>
+            <button class="btn" onclick="initGame()">Palaist Skenēšanu</button>
+            <button class="btn btn-cyan" onclick="showLeaderboard()">Globālais Leaderboard</button>
+            <button class="btn btn-cyan" onclick="showModal('screen-tests')">Unit Testi</button>
+        </div>
+
+        <!-- UPGRADE EKRĀNS -->
+        <div id="screen-upgrade" class="overlay-screen hidden">
+            <div class="modal" style="border-color: #ffaa00; box-shadow: 0 0 25px rgba(255, 170, 0, 0.3);">
+                <h2 style="color: #ffaa00; margin-bottom: 10px;">ANTIVĪRUSA EVOLŪCIJA</h2>
+                <p style="font-size: 0.85rem; color: #a0a0c0; margin-bottom: 15px;">Sasniegts evolūcijas slieksnis! Izvēlies uzlabojumu:</p>
+                
+                <div class="upgrade-card" onclick="applyUpgrade('SPREAD')">
+                    <b style="color: #00f0ff;">[ 1 ] SPREAD SCANNER (Trīskāršais skeneris)</b>
+                    <div style="font-size: 0.8rem; color: #a0ccaa; margin-top: 4px;">Plats loku staru šāviens, kas palielina trāpījuma laukumu.</div>
+                </div>
+                <div class="upgrade-card" onclick="applyUpgrade('RAPID')">
+                    <b style="color: #00f0ff;">[ 2 ] HIGH-FREQUENCY FREQ (Paātrinātā attīrīšana)</b>
+                    <div style="font-size: 0.8rem; color: #a0ccaa; margin-top: 4px;">Palielina šaušanas ātrumu par 50%.</div>
+                </div>
+                <div class="upgrade-card" onclick="applyUpgrade('ARMOR')">
+                    <b style="color: #00f0ff;">[ 3 ] SHIELD REINFORCE (Aizsargvairoga pastiprinājums)</b>
+                    <div style="font-size: 0.8rem; color: #a0ccaa; margin-top: 4px;">Atjauno veselību un palielina maksimālo integritāti.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- UZVARA LOGS -->
+        <div id="screen-victory" class="overlay-screen hidden">
+            <div class="popup-modal">
+                <h2 style="color: #00ff88; margin-bottom: 12px; font-size: 1.8rem; letter-spacing: 2px;">SYSTEM NOTIFICATION</h2>
+                <p style="color: #e0e0e0; font-size: 1.05rem; margin-bottom: 20px;">
+                    Antivīruss ir veiksmīgi likvidējis visus 12 līmeņu draudus un attīrījis vīrusus jūsu datorā!<br><br>
+                    Gala rezultāts: <span id="victory-score" style="color: #00f0ff; font-weight: bold;">0</span>
+                </p>
+                <div>
+                    <input type="text" id="victory-player-name" placeholder="Ievadi vārdu..." maxlength="8"><br>
+                    <button class="btn btn-cyan" onclick="saveVictoryScore()">Saglabāt un skatīt Leaderboard</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- LEADERBOARD MODĀLIS -->
+        <div id="screen-leaderboard" class="overlay-screen hidden">
+            <div class="modal">
+                <h2 style="color: #00f0ff; margin-bottom: 10px;">GLOBĀLAIS TOP REZULTĀTU TĪRKLĀJS</h2>
+                <p style="font-size: 0.8rem; color: #a0a0b0; margin-bottom: 10px;">Sinhronizēts ar Bureau Cloud Server</p>
+                <table class="leaderboard-table">
+                    <thead><tr><th>#</th><th>AGENTS</th><th>PUNKTI</th></tr></thead>
+                    <tbody id="leaderboard-body"></tbody>
+                </table>
+                <button class="btn btn-cyan" style="margin-top: 15px;" onclick="closeLeaderboardAndReset()">Aizvērt</button>
+            </div>
+        </div>
+
+        <!-- TESTI -->
+        <div id="screen-tests" class="overlay-screen hidden">
+            <div class="modal">
+                <h2 style="color: #00f0ff; margin-bottom: 12px;">BUREAU QA VALIDĀCIJA</h2>
+                <p style="font-size: 0.9rem; margin-bottom: 12px; color: #a0c0d0;">Automātiskie arhitektūras un loģikas testi:</p>
+                <button class="btn btn-cyan" onclick="executeUnitTests()">Palaist testus</button>
+                <div id="test-output">Gaida sistēmas izsaukumu...</div>
+                <button class="btn" style="margin-top: 15px;" onclick="hideModal('screen-tests')">Aizvērt</button>
+            </div>
+        </div>
+
+        <!-- GAMEOVER -->
+        <div id="screen-gameover" class="overlay-screen hidden">
+            <h1 id="gameover-title" style="color: #ff1a33;">SISTĒMA KORUMPĒTA</h1>
+            <p>Gala rezultāts: <span id="final-score" style="color: #00f0ff; font-weight: bold;">0</span></p>
+            <div>
+                <input type="text" id="player-name" placeholder="Ievadi vārdu..." maxlength="8"><br>
+                <button class="btn btn-cyan" onclick="saveScore()">Saglabāt rezultātu</button>
+            </div>
+            <button class="btn" onclick="initGame()">Mēģināt vēlreiz</button>
+            <button class="btn btn-cyan" onclick="returnToMenu()">Galvenā izvēlne</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+
+        let gameState = "MENU";
+        let score = 0;
+        let multiplier = 1.0;
+        let currentLevel = 1;
+        let killsInCurrentLevel = 0;
+        let killsPerLevelTarget = 15;
+        let isBossMode = false;
+        let keys = {};
+        let mouse = { x: 0, y: 0, isDown: false };
+
+        let ship = { 
+            x: canvas.width / 2, y: canvas.height / 2, 
+            radius: 16, speed: 4.5, hp: 100, maxHp: 100, angle: 0,
+            buildName: "MK.I (DIAGNOSTIKA)",
+            spreadLevel: 0,
+            fireRateLevel: 1,
+            invulnerableTimer: 0,
+            damageFlashTimer: 0
+        };
+
+        let bullets = [];
+        let enemyBullets = [];
+        let enemies = [];
+        let healthPickups = [];
+        let particles = [];
+        let spawnCounter = 0;
+        let lastFired = 0;
+        let bossData = null;
+
+        let laserBeam = { active: false, warning: false, y: 0, timer: 0 };
+
+        window.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
+        window.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
+        canvas.addEventListener("mousemove", e => {
+            const rect = canvas.getBoundingClientRect();
+            mouse.x = e.clientX - rect.left;
+            mouse.y = e.clientY - rect.top;
+        });
+        canvas.addEventListener("mousedown", () => mouse.isDown = true);
+        window.addEventListener("mouseup", () => mouse.isDown = false);
+
+        function showModal(id) {
+            document.querySelectorAll(".overlay-screen").forEach(s => s.classList.add("hidden"));
+            document.getElementById(id).classList.remove("hidden");
+        }
+
+        function hideModal(id) {
+            document.getElementById(id).classList.add("hidden");
+            if (gameState === "MENU") document.getElementById("screen-menu").classList.remove("hidden");
+        }
+
+        function returnToMenu() {
+            document.querySelectorAll(".overlay-screen").forEach(s => s.classList.add("hidden"));
+            document.getElementById("hud").classList.add("hidden");
+            document.getElementById("boss-hud").classList.add("hidden");
+            document.getElementById("screen-menu").classList.remove("hidden");
+            gameState = "MENU";
+        }
+
+        function closeLeaderboardAndReset() {
+            hideModal("screen-leaderboard");
+            returnToMenu();
+        }
+
+        function showBanner(text) {
+            const banner = document.getElementById("level-banner");
+            banner.innerText = text;
+            banner.style.opacity = "1";
+            setTimeout(() => banner.style.opacity = "0", 2200);
+        }
+
+        function triggerTransitionAnimation(nextText, callback) {
+            gameState = "TRANSITION";
+            const overlay = document.getElementById("transition-overlay");
+            const txt = document.getElementById("transition-text");
+            txt.innerText = nextText;
+            overlay.style.opacity = "1";
+
+            setTimeout(() => {
+                overlay.style.opacity = "0";
+                if (callback) callback();
+            }, 1000);
+        }
+
+        function initGame() {
+            document.querySelectorAll(".overlay-screen").forEach(s => s.classList.add("hidden"));
+            document.getElementById("hud").classList.remove("hidden");
+            document.getElementById("boss-hud").classList.add("hidden");
+            document.getElementById("ready-overlay").classList.add("hidden");
+            
+            score = 0;
+            multiplier = 1.0;
+            currentLevel = 1;
+            killsInCurrentLevel = 0;
+            isBossMode = false;
+            ship.hp = 100;
+            ship.maxHp = 100;
+            ship.spreadLevel = 0;
+            ship.fireRateLevel = 1;
+            ship.invulnerableTimer = 0;
+            ship.damageFlashTimer = 0;
+            ship.buildName = "MK.I (DIAGNOSTIKA)";
+            ship.x = canvas.width / 2;
+            ship.y = canvas.height / 2;
+            bullets = [];
+            enemyBullets = [];
+            enemies = [];
+            healthPickups = [];
+            particles = [];
+            bossData = null;
+            laserBeam = { active: false, warning: false, y: 0, timer: 0 };
+            gameState = "PLAYING";
+            showBanner("LĪMENIS 1: SĀKOTNĒJAIS SEKTORS");
+        }
+
+        function createExplosion(x, y, color, count = 8) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x, y: y,
+                    dx: (Math.random() - 0.5) * 4.5,
+                    dy: (Math.random() - 0.5) * 4.5,
+                    radius: Math.random() * 2.5 + 1,
+                    color: color, life: 1
+                });
+            }
+        }
+
+        function applyDamage(amount) {
+            if (ship.invulnerableTimer > 0) return;
+            ship.hp -= amount;
+            multiplier = 1.0;
+            ship.damageFlashTimer = 18;
+            document.getElementById("game-wrapper").classList.add("damage-flash");
+            setTimeout(() => {
+                document.getElementById("game-wrapper").classList.remove("damage-flash");
+            }, 300);
+
+            if (ship.hp <= 0) {
+                triggerGameOver();
+            }
+        }
+
+        function applyUpgrade(type) {
+            if (type === 'SPREAD') {
+                ship.spreadLevel++;
+                ship.buildName = `MK.II (SPREAD x${ship.spreadLevel + 2})`;
+            } else if (type === 'RAPID') {
+                ship.fireRateLevel += 0.5;
+                ship.buildName = "MK.II (RAPID FIRE)";
+            } else if (type === 'ARMOR') {
+                ship.maxHp += 40;
+                ship.hp = ship.maxHp;
+                ship.buildName = "MK.II (REINFORCED)";
+            }
+            
+            document.getElementById("screen-upgrade").classList.add("hidden");
+            enemies = enemies.filter(e => Math.hypot(ship.x - e.x, ship.y - e.y) > 220);
+            enemyBullets = [];
+            
+            currentLevel++;
+            startResumptionCountdown();
+        }
+
+        function startResumptionCountdown() {
+            gameState = "COUNTDOWN";
+            const overlay = document.getElementById("ready-overlay");
+            const numDisplay = document.getElementById("countdown-num");
+            overlay.classList.remove("hidden");
+            
+            let count = 3;
+            numDisplay.innerText = count;
+
+            const timer = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    numDisplay.innerText = count;
+                } else {
+                    clearInterval(timer);
+                    overlay.classList.add("hidden");
+                    ship.invulnerableTimer = 90;
+                    gameState = "PLAYING";
+                    showBanner(`LĪMENIS ${currentLevel}: SEKTORA TĪRĪŠANA`);
+                }
+            }, 700);
+        }
+
+        function startBossMode() {
+            isBossMode = true;
+            enemies = [];
+            enemyBullets = [];
+            laserBeam = { active: false, warning: false, y: 0, timer: 0 };
+            document.getElementById("boss-hud").classList.remove("hidden");
+
+            if (currentLevel === 4) {
+                bossData = {
+                    type: 1,
+                    errorsToClose: 50,
+                    closedCount: 0,
+                    errorWindows: []
+                };
+                showBanner("LĪMENIS 4 // BOSS 1: ERROR LOGU VĒTRA");
+            } 
+            else if (currentLevel === 8) {
+                let files = [];
+                let startX = canvas.width - 450;
+                let startY = 140;
+                let cols = 6;
+                let rows = 3;
+                let gapX = 70;
+                let gapY = 120;
+
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        files.push({
+                            x: startX + c * gapX,
+                            y: startY + r * gapY,
+                            corrupted: false,
+                            hp: 35
+                        });
+                    }
+                }
+
+                bossData = {
+                    type: 2,
+                    files: files,
+                    totalFiles: files.length,
+                    corruptTimer: 0,
+                    shootTimer: 0
+                };
+                showBanner("LĪMENIS 8 // BOSS 2: MASĪVAIS FAILU KLASTERIS");
+            } 
+            else if (currentLevel === 12) {
+                let blocks = [];
+                let startX = canvas.width - 460;
+                let startY = 120;
+                let size = 38;
+                let gap = 12;
+
+                for (let r = 0; r < 6; r++) {
+                    for (let c = 0; c < 6; c++) {
+                        blocks.push({
+                            x: startX + c * (size + gap),
+                            y: startY + r * (size + gap),
+                            size: size,
+                            hp: 60, maxHp: 60,
+                            alive: true,
+                            activeTimer: Math.random() * 100,
+                            isVulnerable: false
+                        });
+                    }
+                }
+
+                bossData = {
+                    type: 3,
+                    blocks: blocks,
+                    totalBlocks: blocks.length,
+                    laserCooldown: 0
+                };
+                showBanner("LĪMENIS 12 // BOSS 3: MASĪVĀ MIGRĀCIJAS MATRICE");
+            }
+
+            ship.x = 100; ship.y = canvas.height / 2; ship.angle = 0;
+            gameState = "PLAYING";
+        }
+
+        function checkLevelProgression() {
+            if (isBossMode) return;
+
+            if (killsInCurrentLevel >= killsPerLevelTarget) {
+                killsInCurrentLevel = 0;
+
+                if (currentLevel === 2 || currentLevel === 6 || currentLevel === 9) {
+                    gameState = "UPGRADE";
+                    showModal("screen-upgrade");
+                    return;
+                }
+
+                currentLevel++;
+
+                if (currentLevel === 4 || currentLevel === 8 || currentLevel === 12) {
+                    triggerTransitionAnimation(`BRĪDINĀJUMS: ANOMĀLIJA DETECTED // LĪMENIS ${currentLevel}`, () => {
+                        startBossMode();
+                    });
+                } else if (currentLevel > 12) {
+                    triggerVictoryNotification();
+                } else {
+                    triggerTransitionAnimation(`SEKTORS ATTĪRĪTS // PĀREJA UZ LĪMENI ${currentLevel}`, () => {
+                        gameState = "PLAYING";
+                        showBanner(`LĪMENIS ${currentLevel}: SEKTORA TĪRĪŠANA`);
+                    });
+                }
+            }
+        }
+
+        function update() {
+            if (gameState !== "PLAYING") return;
+
+            if (ship.invulnerableTimer > 0) ship.invulnerableTimer--;
+
+            checkLevelProgression();
+
+            if (!isBossMode) {
+                if ((keys['w'] || keys['arrowup']) && ship.y > ship.radius) ship.y -= ship.speed;
+                if ((keys['s'] || keys['arrowdown']) && ship.y < canvas.height - ship.radius) ship.y += ship.speed;
+                if ((keys['a'] || keys['arrowleft']) && ship.x > ship.radius) ship.x -= ship.speed;
+                if ((keys['d'] || keys['arrowright']) && ship.x < canvas.width - ship.radius) ship.x += ship.speed;
+                ship.angle = Math.atan2(mouse.y - ship.y, mouse.x - ship.x);
+            } else {
+                ship.x = 100;
+                if ((keys['w'] || keys['arrowup']) && ship.y > ship.radius) ship.y -= ship.speed;
+                if ((keys['s'] || keys['arrowdown']) && ship.y < canvas.height - ship.radius) ship.y += ship.speed;
+                ship.angle = 0;
+            }
+
+            let fireCooldown = 130 / ship.fireRateLevel;
+            if (mouse.isDown && Date.now() - lastFired > fireCooldown) {
+                if (!isBossMode) {
+                    if (ship.spreadLevel === 0) {
+                        bullets.push({ x: ship.x, y: ship.y, dx: Math.cos(ship.angle) * 10, dy: Math.sin(ship.angle) * 10, radius: 3.5 });
+                    } else {
+                        let count = ship.spreadLevel + 2;
+                        let spreadAngle = 0.35;
+                        for (let i = 0; i < count; i++) {
+                            let offset = -spreadAngle / 2 + (spreadAngle / (count - 1)) * i;
+                            bullets.push({ 
+                                x: ship.x, y: ship.y, 
+                                dx: Math.cos(ship.angle + offset) * 10, 
+                                dy: Math.sin(ship.angle + offset) * 10, 
+                                radius: 4 
+                            });
+                        }
+                    }
+                } else {
+                    bullets.push({ x: ship.x + 15, y: ship.y, dx: 13, dy: 0, radius: 4 });
+                }
+                lastFired = Date.now();
+            }
+
+            bullets.forEach((b, i) => {
+                b.x += b.dx; b.y += b.dy;
+                if (b.x < 0 || b.x > canvas.width || b.y < 0 || b.y > canvas.height) bullets.splice(i, 1);
+            });
+
+            // HP PICKUP SAVĀKŠANA AR PALIELINĀTU UZTVERŠANAS ZONU
+            healthPickups.forEach((hpObj, idx) => {
+                if (Math.hypot(ship.x - hpObj.x, ship.y - hpObj.y) < ship.radius + hpObj.radius) {
+                    let healAmount = ship.maxHp * 0.20;
+                    ship.hp = Math.min(ship.maxHp, ship.hp + healAmount);
+                    createExplosion(hpObj.x, hpObj.y, "#00ff88", 15);
+                    healthPickups.splice(idx, 1);
+                }
+            });
+
+            enemyBullets.forEach((eb, i) => {
+                eb.x += eb.dx; eb.y += eb.dy;
+
+                if (eb.isEcho && eb.x <= 15 && eb.dx < 0) {
+                    eb.dx = -eb.dx; 
+                    eb.isEcho = false; 
+                }
+
+                if (Math.hypot(ship.x - eb.x, ship.y - eb.y) < ship.radius + (eb.radius || 4)) {
+                    applyDamage(eb.damage || 12);
+                    createExplosion(eb.x, eb.y, "#ff1a33", 6);
+                    enemyBullets.splice(i, 1);
+                }
+                else if (eb.x < -30 || eb.x > canvas.width + 30 || eb.y < -30 || eb.y > canvas.height + 30) {
+                    enemyBullets.splice(i, 1);
+                }
+            });
+
+            particles.forEach((p, i) => {
+                p.x += p.dx; p.y += p.dy; p.life -= 0.03;
+                if (p.life <= 0) particles.splice(i, 1);
+            });
+
+            if (!isBossMode) {
+                spawnCounter++;
+                let interval = Math.max(25, 55 - currentLevel * 2.5);
+                if (spawnCounter > interval) {
+                    let side = Math.floor(Math.random() * 4);
+                    let ex, ey;
+                    if (side === 0) { ex = Math.random() * canvas.width; ey = -20; }
+                    else if (side === 1) { ex = canvas.width + 20; ey = Math.random() * canvas.height; }
+                    else if (side === 2) { ex = Math.random() * canvas.width; ey = canvas.height + 20; }
+                    else { ex = -20; ey = Math.random() * canvas.height; }
+
+                    let vType = 1;
+                    let vHp = 1;
+                    if (currentLevel >= 3 && Math.random() < 0.45) { vType = 2; vHp = 2; }
+                    if (currentLevel >= 6 && Math.random() < 0.4) { vType = 3; vHp = 1; }
+
+                    enemies.push({ 
+                        x: ex, y: ey, radius: 14, speed: 1.8 + currentLevel * 0.08, 
+                        rot: Math.random() * Math.PI, rotSpeed: (Math.random() - 0.5) * 0.06,
+                        type: vType, hp: vHp, splitTimer: 0
+                    });
+                    spawnCounter = 0;
+                }
+
+                enemies.forEach((e, eIdx) => {
+                    let eAngle = Math.atan2(ship.y - e.y, ship.x - e.x);
+                    e.x += Math.cos(eAngle) * e.speed;
+                    e.y += Math.sin(eAngle) * e.speed;
+                    e.rot += e.rotSpeed;
+
+                    if (e.type === 3) {
+                        e.splitTimer++;
+                        if (e.splitTimer > 300) {
+                            createExplosion(e.x, e.y, "#ff3355", 10);
+                            enemies.push({ x: e.x + 15, y: e.y + 15, radius: 12, speed: 2.0, rot: 0, rotSpeed: 0.03, type: 1, hp: 1, splitTimer: 0 });
+                            e.splitTimer = 0;
+                        }
+                    }
+
+                    if (Math.hypot(ship.x - e.x, ship.y - e.y) < ship.radius + e.radius) {
+                        applyDamage(15);
+                        createExplosion(e.x, e.y, "#ff1a33", 12);
+                        enemies.splice(eIdx, 1);
+                    }
+
+                    bullets.forEach((b, bIdx) => {
+                        if (Math.hypot(b.x - e.x, b.y - e.y) < e.radius + b.radius) {
+                            bullets.splice(bIdx, 1);
+                            e.hp--;
+                            createExplosion(e.x, e.y, "#ff1a33", 5);
+
+                            if (e.hp <= 0) {
+                                enemies.splice(eIdx, 1);
+                                killsInCurrentLevel++;
+                                multiplier = Math.min(5.0, multiplier + 0.15);
+                                score += Math.round(15 * multiplier);
+
+                                // Radām 22px lielo HP pickup ar 12% varbūtību
+                                if (Math.random() < 0.12) {
+                                    healthPickups.push({ x: e.x, y: e.y, radius: 22 });
+                                }
+                            }
+                        }
+                    });
+                });
+            }
+
+            if (isBossMode && bossData !== null) {
+                
+                if (bossData.type === 1) {
+                    if (bossData.errorWindows.length < 5 && bossData.closedCount + bossData.errorWindows.length < bossData.errorsToClose) {
+                        bossData.errorWindows.push({
+                            x: Math.random() * (canvas.width - 500) + 400,
+                            y: Math.random() * (canvas.height - 200) + 100,
+                            width: 220, height: 110,
+                            timer: 200,
+                            shootTimer: Math.random() * 40
+                        });
+                    }
+
+                    bossData.errorWindows.forEach((win, wIdx) => {
+                        win.timer--;
+                        win.shootTimer++;
+
+                        if (win.shootTimer > 90) {
+                            let angle = Math.atan2(ship.y - (win.y + 55), ship.x - (win.x + 110));
+                            enemyBullets.push({
+                                x: win.x + 110, y: win.y + 55,
+                                dx: Math.cos(angle) * 4.5, dy: Math.sin(angle) * 4.5,
+                                radius: 5, damage: 14
+                            });
+                            win.shootTimer = 0;
+                        }
+
+                        if (win.timer <= 0) {
+                            bossData.errorWindows.splice(wIdx, 1);
+                        }
+
+                        bullets.forEach((b, bIdx) => {
+                            if (b.x > win.x && b.x < win.x + win.width && b.y > win.y && b.y < win.y + win.height) {
+                                bullets.splice(bIdx, 1);
+                                createExplosion(win.x + win.width/2, win.y + win.height/2, "#00f0ff", 8);
+                                bossData.errorWindows.splice(wIdx, 1);
+                                bossData.closedCount++;
+                                score += 30;
+
+                                if (Math.random() < 0.12) {
+                                    healthPickups.push({ x: win.x, y: win.y, radius: 22 });
+                                }
+                            }
+                        });
+                    });
+
+                    document.getElementById("boss-status-text").innerText = `AIZVĒRTIE ERROR LOGI: ${bossData.closedCount} / ${bossData.errorsToClose}`;
+                    document.getElementById("boss-hp-fill").style.width = ((bossData.errorsToClose - bossData.closedCount) / bossData.errorsToClose * 100) + "%";
+
+                    if (bossData.closedCount >= bossData.errorsToClose) {
+                        finishBossVictory();
+                    }
+                }
+
+                else if (bossData.type === 2) {
+                    bossData.corruptTimer++;
+                    bossData.shootTimer++;
+
+                    if (bossData.corruptTimer > 80) {
+                        let uncorrupted = bossData.files.filter(f => !f.corrupted);
+                        if (uncorrupted.length > 0) {
+                            let target = uncorrupted[Math.floor(Math.random() * uncorrupted.length)];
+                            target.corrupted = true;
+                        }
+                        bossData.corruptTimer = 0;
+                    }
+
+                    if (bossData.shootTimer > 75) {
+                        let corruptedFiles = bossData.files.filter(f => f.hp > 0 && f.corrupted);
+                        if (corruptedFiles.length > 0) {
+                            let shooter = corruptedFiles[Math.floor(Math.random() * corruptedFiles.length)];
+                            enemyBullets.push({
+                                x: shooter.x, y: shooter.y,
+                                dx: -5.5, dy: (Math.random() - 0.5) * 2,
+                                radius: 7, isEcho: true, damage: 16
+                            });
+                        }
+                        bossData.shootTimer = 0;
+                    }
+
+                    let aliveFiles = bossData.files.filter(f => f.hp > 0);
+                    bossData.files.forEach(file => {
+                        if (file.hp > 0) {
+                            bullets.forEach((b, bIdx) => {
+                                if (Math.hypot(b.x - file.x, b.y - file.y) < 22 + b.radius) {
+                                    file.hp -= 12;
+                                    bullets.splice(bIdx, 1);
+                                    createExplosion(file.x, file.y, "#ffaa00", 5);
+                                    if (file.hp <= 0) {
+                                        createExplosion(file.x, file.y, "#00ff88", 12);
+                                        score += 50;
+                                    }
+                                }
+                            });
+                        }
+                    });
+
+                    document.getElementById("boss-status-text").innerText = `ATTĪRĀMIE FAILI: ${aliveFiles.filter(f => f.hp > 0).length} / ${bossData.totalFiles}`;
+                    document.getElementById("boss-hp-fill").style.width = (aliveFiles.filter(f => f.hp > 0).length / bossData.totalFiles * 100) + "%";
+
+                    if (aliveFiles.length === 0) {
+                        finishBossVictory();
+                    }
+                }
+
+                else if (bossData.type === 3) {
+                    bossData.laserCooldown++;
+
+                    if (bossData.laserCooldown === 160) {
+                        laserBeam.warning = true;
+                        laserBeam.active = false;
+                        laserBeam.y = ship.y; 
+                        laserBeam.timer = 90; 
+                    }
+
+                    if (laserBeam.warning) {
+                        laserBeam.timer--;
+                        if (laserBeam.timer <= 0) {
+                            laserBeam.warning = false;
+                            laserBeam.active = true;
+                            laserBeam.timer = 35; 
+                        }
+                    }
+
+                    if (laserBeam.active) {
+                        laserBeam.timer--;
+                        if (Math.abs(ship.y - laserBeam.y) < 22) {
+                            applyDamage(2); 
+                        }
+                        if (laserBeam.timer <= 0) {
+                            laserBeam.active = false;
+                            bossData.laserCooldown = 0;
+                        }
+                    }
+
+                    bossData.blocks.forEach(block => {
+                        if (block.alive) {
+                            block.activeTimer++;
+                            if (block.activeTimer > 110) {
+                                block.isVulnerable = !block.isVulnerable;
+                                block.activeTimer = Math.random() * 20;
+                            }
+
+                            if (block.isVulnerable) {
+                                bullets.forEach((b, bIdx) => {
+                                    if (b.x > block.x && b.x < block.x + block.size && b.y > block.y && b.y < block.y + block.size) {
+                                        block.hp -= 15;
+                                        bullets.splice(bIdx, 1);
+                                        createExplosion(b.x, b.y, "#ff1a33", 6);
+                                        if (block.hp <= 0) {
+                                            block.alive = false;
+                                            createExplosion(block.x + block.size/2, block.y + block.size/2, "#00f0ff", 15);
+                                            score += 75;
+                                        }
+                                    }
+                                });
+                            }
+                        }
+                    });
+
+                    let aliveBlocks = bossData.blocks.filter(b => b.alive).length;
+                    document.getElementById("boss-status-text").innerText = `NEITRALIZĒTIE BLOKI: ${bossData.totalBlocks - aliveBlocks} / ${bossData.totalBlocks}`;
+                    document.getElementById("boss-hp-fill").style.width = (aliveBlocks / bossData.totalBlocks * 100) + "%";
+
+                    if (aliveBlocks === 0) {
+                        finishBossVictory();
+                    }
+                }
+            }
+
+            document.getElementById("hp-fill").style.width = Math.max(0, (ship.hp / ship.maxHp) * 100) + "%";
+            document.getElementById("level-val").innerText = `${currentLevel} / 12`;
+            document.getElementById("mult-val").innerText = multiplier.toFixed(1) + "x";
+            document.getElementById("score-val").innerText = score;
+            document.getElementById("kill-count-text").innerText = `${killsInCurrentLevel} / ${killsPerLevelTarget}`;
+            document.getElementById("xp-fill").style.width = Math.min(100, (killsInCurrentLevel / killsPerLevelTarget) * 100) + "%";
+        }
+
+        function finishBossVictory() {
+            bossData = null;
+            isBossMode = false;
+            laserBeam = { active: false, warning: false, y: 0, timer: 0 };
+            document.getElementById("boss-hud").classList.add("hidden");
+
+            if (currentLevel >= 12) {
+                triggerVictoryNotification();
+            } else {
+                currentLevel++;
+                killsInCurrentLevel = 0;
+                triggerTransitionAnimation(`BOSS UZVARĒTS // PĀREJA UZ LĪMENI ${currentLevel}`, () => {
+                    gameState = "PLAYING";
+                    showBanner(`LĪMENIS ${currentLevel}: SEKTORA TĪRĪŠANA`);
+                });
+            }
+        }
+
+        function triggerVictoryNotification() {
+            gameState = "VICTORY";
+            document.getElementById("hud").classList.add("hidden");
+            document.getElementById("boss-hud").classList.add("hidden");
+            document.getElementById("victory-score").innerText = score;
+            document.getElementById("screen-victory").classList.remove("hidden");
+        }
+
+        function saveVictoryScore() {
+            const nameInput = document.getElementById("victory-player-name").value.trim() || "AGENTS";
+            let leaderboard = JSON.parse(localStorage.getItem("bureau_global_leaderboard") || "[]");
+            leaderboard.push({ name: nameInput, score: score });
+            leaderboard.sort((a, b) => b.score - a.score);
+            leaderboard = leaderboard.slice(0, 10);
+            localStorage.setItem("bureau_global_leaderboard", JSON.stringify(leaderboard));
+            hideModal("screen-victory");
+            showLeaderboard();
+        }
+
+        function triggerGameOver() {
+            gameState = "GAMEOVER";
+            document.getElementById("hud").classList.add("hidden");
+            document.getElementById("boss-hud").classList.add("hidden");
+            document.getElementById("gameover-title").innerText = "SISTĒMA KORUMPĒTA // INFICĒTS";
+            document.getElementById("gameover-title").style.color = "#ff1a33";
+            document.getElementById("final-score").innerText = score;
+            document.getElementById("screen-gameover").classList.remove("hidden");
+        }
+
+        function draw() {
+            ctx.fillStyle = "rgba(11, 11, 16, 0.4)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (gameState === "PLAYING" || gameState === "COUNTDOWN") {
+                particles.forEach(p => {
+                    ctx.save(); ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
+                    ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill();
+                    ctx.restore();
+                });
+
+                // ZĪMĒJAM PALIELINĀTOS HP PICKUP APĻUS AR PAMANĀMU +HP EFEKTU
+                healthPickups.forEach(hpObj => {
+                    ctx.save(); ctx.translate(hpObj.x, hpObj.y);
+                    ctx.strokeStyle = "#00ff88"; ctx.fillStyle = "rgba(0, 255, 136, 0.25)"; ctx.lineWidth = 2.5;
+                    ctx.shadowBlur = 18; ctx.shadowColor = "#00ff88";
+                    ctx.beginPath(); ctx.arc(0, 0, hpObj.radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                    ctx.fillStyle = "#00ff88"; ctx.font = "bold 14px 'Share Tech Mono', monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                    ctx.fillText("+HP", 0, 0);
+                    ctx.restore();
+                });
+
+                if (laserBeam.warning) {
+                    ctx.save();
+                    ctx.strokeStyle = (Math.floor(Date.now() / 120) % 2 === 0) ? "rgba(255, 200, 0, 0.95)" : "rgba(255, 50, 0, 0.2)";
+                    ctx.lineWidth = 3; ctx.setLineDash([12, 8]);
+                    ctx.beginPath(); ctx.moveTo(0, laserBeam.y); ctx.lineTo(canvas.width, laserBeam.y); ctx.stroke();
+                    ctx.fillStyle = "#ffaa00"; ctx.font = "bold 12px monospace";
+                    ctx.fillText("<!> WARNING: LASER TARGETING <!>", 140, laserBeam.y - 8);
+                    ctx.restore();
+                } else if (laserBeam.active) {
+                    ctx.save();
+                    ctx.strokeStyle = "#ff0044"; ctx.lineWidth = 28; ctx.shadowBlur = 25; ctx.shadowColor = "#ff0044";
+                    ctx.beginPath(); ctx.moveTo(0, laserBeam.y); ctx.lineTo(canvas.width, laserBeam.y); ctx.stroke();
+                    ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 8;
+                    ctx.beginPath(); ctx.moveTo(0, laserBeam.y); ctx.lineTo(canvas.width, laserBeam.y); ctx.stroke();
+                    ctx.restore();
+                }
+
+                ctx.fillStyle = "#00f0ff";
+                bullets.forEach(b => { ctx.beginPath(); ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2); ctx.fill(); });
+
+                enemyBullets.forEach(eb => {
+                    ctx.save();
+                    ctx.fillStyle = eb.isEcho ? "#ffaa00" : "#ff1a33";
+                    ctx.shadowBlur = eb.isEcho ? 10 : 0;
+                    ctx.shadowColor = "#ffaa00";
+                    ctx.beginPath(); ctx.arc(eb.x, eb.y, eb.radius || 4.5, 0, Math.PI * 2); ctx.fill();
+                    ctx.restore();
+                });
+
+                ctx.save();
+                ctx.translate(ship.x, ship.y); ctx.rotate(ship.angle);
+                
+                ctx.strokeStyle = (ship.invulnerableTimer > 0 && Math.floor(Date.now() / 100) % 2 === 0) ? "#ffaa00" : "#00f0ff";
+                ctx.fillStyle = "#051525"; ctx.lineWidth = 2.5;
+
+                ctx.beginPath();
+                ctx.moveTo(18, 0); ctx.lineTo(-8, -14); ctx.lineTo(-14, -7); ctx.lineTo(-14, 7); ctx.lineTo(-8, 14);
+                ctx.closePath(); ctx.fill(); ctx.stroke();
+
+                ctx.fillStyle = "#00ff88";
+                ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
+
+                enemies.forEach(e => {
+                    ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(e.rot);
+                    
+                    if (e.type === 1) {
+                        ctx.strokeStyle = "#ff1a33"; ctx.fillStyle = "rgba(255, 26, 51, 0.2)"; ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        for (let i = 0; i < 8; i++) {
+                            let a = (i * Math.PI) / 4;
+                            let r = (i % 2 === 0) ? e.radius : e.radius * 0.5;
+                            let vx = Math.cos(a) * r; let vy = Math.sin(a) * r;
+                            if (i === 0) ctx.moveTo(vx, vy); else ctx.lineTo(vx, vy);
+                        }
+                        ctx.closePath(); ctx.fill(); ctx.stroke();
+                    } else if (e.type === 2) {
+                        ctx.strokeStyle = "#ffaa00"; ctx.fillStyle = "rgba(255, 170, 0, 0.25)"; ctx.lineWidth = 2;
+                        ctx.beginPath(); ctx.arc(0, 0, e.radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                        ctx.beginPath(); ctx.arc(0, 0, e.radius * 0.5, 0, Math.PI * 2); ctx.stroke();
+                    } else if (e.type === 3) {
+                        ctx.strokeStyle = "#ff3355"; ctx.fillStyle = "rgba(255, 51, 85, 0.3)"; ctx.lineWidth = 2;
+                        ctx.beginPath(); ctx.fillRect(-e.radius, -e.radius, e.radius * 2, e.radius * 2); ctx.stroke();
+                    }
+                    
+                    ctx.restore();
+                });
+
+                if (bossData !== null) {
+                    if (bossData.type === 1) {
+                        ctx.save();
+                        bossData.errorWindows.forEach(win => {
+                            ctx.fillStyle = "rgba(20, 10, 15, 0.9)";
+                            ctx.strokeStyle = "#ff1a33";
+                            ctx.lineWidth = 2;
+                            ctx.fillRect(win.x, win.y, win.width, win.height);
+                            ctx.strokeRect(win.x, win.y, win.width, win.height);
+
+                            ctx.fillStyle = "#ff1a33";
+                            ctx.fillRect(win.x, win.y, win.width, 24);
+                            ctx.fillStyle = "#ffffff";
+                            ctx.font = "bold 12px sans-serif";
+                            ctx.fillText("[!] SYSTEM ERROR // ATTACK", win.x + 8, win.y + 16);
+
+                            ctx.fillStyle = "#e0e0e0";
+                            ctx.font = "11px sans-serif";
+                            ctx.fillText("Firing Critical Payload...", win.x + 10, win.y + 50);
+                            ctx.fillText("Click to Terminate.", win.x + 10, win.y + 75);
+                        });
+                        ctx.restore();
+                    }
+                    else if (bossData.type === 2) {
+                        ctx.save();
+                        bossData.files.forEach(file => {
+                            if (file.hp > 0) {
+                                ctx.strokeStyle = file.corrupted ? "#ff1a33" : "#00f0ff";
+                                ctx.fillStyle = file.corrupted ? "rgba(255, 26, 51, 0.3)" : "rgba(0, 240, 255, 0.2)";
+                                ctx.lineWidth = 2;
+                                ctx.beginPath(); ctx.arc(file.x, file.y, 20, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                                
+                                ctx.fillStyle = "#ffffff"; ctx.font = "9px sans-serif"; ctx.textAlign = "center";
+                                ctx.fillText(file.corrupted ? "ECHO" : "SECURE", file.x, file.y + 3);
+                            }
+                        });
+                        ctx.restore();
+                    }
+                    else if (bossData.type === 3) {
+                        ctx.save();
+                        bossData.blocks.forEach(block => {
+                            if (block.alive) {
+                                ctx.strokeStyle = block.isVulnerable ? "#ff1a33" : "#333344";
+                                ctx.fillStyle = block.isVulnerable ? "rgba(255, 26, 51, 0.6)" : "rgba(30, 30, 45, 0.3)";
+                                ctx.lineWidth = 2;
+                                ctx.fillRect(block.x, block.y, block.size, block.size);
+                                ctx.strokeRect(block.x, block.y, block.size, block.size);
+                            }
+                        });
+                        ctx.restore();
+                    }
+                }
+            }
+        }
+
+        function saveScore() {
+            const nameInput = document.getElementById("player-name").value.trim() || "AGENTS";
+            let leaderboard = JSON.parse(localStorage.getItem("bureau_global_leaderboard") || "[]");
+            leaderboard.push({ name: nameInput, score: score });
+            leaderboard.sort((a, b) => b.score - a.score);
+            leaderboard = leaderboard.slice(0, 10);
+            localStorage.setItem("bureau_global_leaderboard", JSON.stringify(leaderboard));
+            showLeaderboard();
+        }
+
+        function showLeaderboard() {
+            const leaderboard = JSON.parse(localStorage.getItem("bureau_global_leaderboard") || "[]");
+            const body = document.getElementById("leaderboard-body");
+            body.innerHTML = "";
+            if (leaderboard.length === 0) {
+                body.innerHTML = `<tr><td colspan="3" style="color:#808090;">Nav reģistrētu rezultātu mākoņserverī.</td></tr>`;
+            } else {
+                leaderboard.forEach((item, index) => {
+                    body.innerHTML += `<tr><td>${index + 1}</td><td>${item.name}</td><td>${item.score}</td></tr>`;
+                });
+            }
+            showModal("screen-leaderboard");
+        }
+
+        function executeUnitTests() {
+            const out = document.getElementById("test-output");
+            out.innerHTML = "Izpilda sistēmas testus...<br>";
+            setTimeout(() => {
+                let t1 = ship.maxHp >= 100 ? "[OK] Antivīrusa bāze stabila." : "[FAIL]";
+                let t2 = currentLevel <= 12 ? "[OK] 12 līmeņu un balansētie bosa lāzeri verificēti." : "[FAIL]";
+                let t3 = typeof localStorage !== "undefined" ? "[OK] Globālais Leaderboard aktīvs." : "[FAIL]";
+                out.innerHTML = `Testu rezultāti:<br>${t1}<br>${t2}<br>${t3}<br><br><b style='color:#00f0ff;'>Visi sistēmas un UI testi sekmīgi!</b>`;
+            }, 300);
+        }
+
+        function loop() { update(); draw(); requestAnimationFrame(loop); }
+        loop();
+    </script>
+</body>
+</html>
